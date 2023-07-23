@@ -1,0 +1,104 @@
+---
+apiVersion: apps/v1
+# Deployment를 활용하면 웹서버를 클러스터에 배포할 수 있습니다.
+kind: Deployment
+metadata:
+  name: my-web-server # 객체 이름
+  namespace: default # TODO: 00 을 자리 번호로 변경합니다.
+  labels:
+    name: my-web-server
+    serviceType: public
+spec:
+  # 같은 웹서버를 몇개 배포할 지 결정합니다.
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      name: my-web-server
+  template:
+    metadata:
+      labels:
+        name: my-web-server
+        serviceType: public
+    spec:
+      affinity:
+        nodeAffinity:
+          # 클러스터의 연산용 노드 (Compute)나 서버 배포용 노드 (Gateway)에 작업을 할당합니다.
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/kiss
+                    operator: In
+                    values:
+                      - Compute
+                      - Gateway
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      # serviceAccount: account
+      containers:
+        - name: nginx
+          # 배포할 웹서버의 Docker 이미지를 기재합니다.
+          image: registry.ark.svc.ops.openark/lab/02/number-00/nginx:latest # TODO: 00 을 자리 번호로 변경합니다.
+          # Always로 설정하면 항상 최신 Docker 이미지를 받아옵니다.
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 80 # 테스트할 때 사용한 웹서버 포트인 8080 입니다.
+          # 웹서버의 컴퓨터 자원 한계치를 기재합니다.
+          resources:
+            requests:
+              cpu: 30m
+              memory: 20Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+---
+apiVersion: v1
+# Service를 활용하면 웹서버를 클러스터에 배포할 수 있습니다.
+kind: Service
+metadata:
+  name: my-web-server
+  namespace: default
+spec:
+  selector:
+    name: my-web-server
+  ports:
+    - name: http
+      port: 80 # 접속에 사용할 포트번호 입니다. 80은 일반적인 웹 통신 (HTTP)에 사용되며 생략이 가능합니다.
+      protocol: TCP
+      targetPort: 80 # 테스트할 때 사용한 웹서버 포트인 8080 입니다.
+---
+apiVersion: networking.k8s.io/v1
+# Ingress를 활용하면 웹 서버에 웹 주소 (도메인)을 적용할 수 있습니다.
+kind: Ingress
+metadata:
+  name: my-web-server
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: ingress-nginx-controller.vine.svc.ops.openark
+    kubernetes.io/ingress.class: ingress-nginx-controller.vine.svc.ops.openark
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 200M
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    vine.ulagbulag.io/is-service: "true"
+    vine.ulagbulag.io/is-service-public: "true"
+    vine.ulagbulag.io/is-service-system: "false"
+    vine.ulagbulag.io/service-kind: Test NGINX Web Server
+spec:
+  rules:
+    - host: ingress-nginx-controller.vine.svc.ops.openark
+      http:
+        paths:
+          - path: /lab/02/number-00(/|$)(.*) # TODO: 00 을 자리 번호로 변경합니다.
+            pathType: Prefix
+            backend:
+              service:
+                name: my-web-server
+                port:
+                  number: 80 # 접속에 사용할 포트번호 입니다. 80은 일반적인 웹 통신 (HTTP)에 사용되며 생략이 가능합니다.
