@@ -4,7 +4,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-web-server # 객체 이름
-  namespace: default # TODO: 00 을 자리 번호로 변경합니다.
   labels:
     name: my-web-server
     serviceType: public
@@ -25,15 +24,15 @@ spec:
     spec:
       affinity:
         nodeAffinity:
-          # 클러스터의 연산용 노드 (Compute)나 서버 배포용 노드 (Gateway)에 작업을 할당합니다.
+          # 일반적으로 웹서버는 클러스터의 연산용 노드 (Compute)나 서버 배포용 노드 (Gateway)에 작업을 할당합니다.
+          # 지금은 사용중인 데스크톱 (PC) 노드에 서버를 할당해봅시다.
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
                   - key: node-role.kubernetes.io/kiss
                     operator: In
                     values:
-                      - Compute
-                      - Gateway
+                      - Desktop
       securityContext:
         seccompProfile:
           type: RuntimeDefault
@@ -47,7 +46,7 @@ spec:
           ports:
             - name: http
               protocol: TCP
-              containerPort: 80 # 테스트할 때 사용한 웹서버 포트인 8080 입니다.
+              containerPort: 8080 # 테스트할 때 사용한 웹서버 포트인 8080 입니다.
           # 웹서버의 컴퓨터 자원 한계치를 기재합니다.
           resources:
             requests:
@@ -62,7 +61,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: my-web-server
-  namespace: default
 spec:
   selector:
     name: my-web-server
@@ -70,14 +68,13 @@ spec:
     - name: http
       port: 80 # 접속에 사용할 포트번호 입니다. 80은 일반적인 웹 통신 (HTTP)에 사용되며 생략이 가능합니다.
       protocol: TCP
-      targetPort: 80 # 테스트할 때 사용한 웹서버 포트인 8080 입니다.
+      targetPort: 8080 # 테스트할 때 사용한 웹서버 포트인 8080 입니다.
 ---
 apiVersion: networking.k8s.io/v1
 # Ingress를 활용하면 웹 서버에 웹 주소 (도메인)을 적용할 수 있습니다.
 kind: Ingress
 metadata:
   name: my-web-server
-  namespace: default
   annotations:
     cert-manager.io/cluster-issuer: ingress-nginx-controller.vine.svc.ops.openark
     kubernetes.io/ingress.class: ingress-nginx-controller.vine.svc.ops.openark
