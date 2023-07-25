@@ -40,7 +40,7 @@ spec:
       containers:
         - name: nginx
           # 배포할 웹서버의 Docker 이미지를 기재합니다.
-          image: docker.io/nginx:latest # TODO: 00 을 자리 번호로 변경합니다.
+          image: registry.ark.svc.ops.openark/lab/02/number-00/nginx:latest # TODO: 00 을 자리 번호로 변경합니다.
           # Always로 설정하면 항상 최신 Docker 이미지를 받아옵니다.
           imagePullPolicy: Always
           ports:
